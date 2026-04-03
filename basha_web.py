@@ -1,124 +1,178 @@
 import streamlit as st
-import requests
 import json
 import os
-import uuid
 
 # --- 1. إعدادات المنصة ---
-st.set_page_config(page_title="Vupex App", page_icon="💎", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Vupex Global", layout="wide", initial_sidebar_state="collapsed")
 
-# --- 2. ستايل "الأزرار السفلية" (Bottom Nav Style) ---
+# --- 2. السحر الحقيقي (CSS لقلب الموازين) ---
 st.markdown("""
 <style>
-    /* تصفير الهوامش */
-    .main { background-color: #0d1117; padding-bottom: 100px !important; }
+    .main { background-color: #0d1117; }
+    [data-testid="stHeader"] { display: none; }
     
-    /* ستايل المستطيل السفلي (الأزرار) */
-    .nav-container {
-        position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 90%;
-        max-width: 500px;
-        background: rgba(22, 27, 34, 0.9);
-        backdrop-filter: blur(10px);
-        border: 1px solid #30363d;
-        border-radius: 20px;
-        display: flex;
-        justify-content: space-around;
-        padding: 10px;
-        z-index: 9999;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    /* الهيدر العلوي */
+    .header-box {
+        background: linear-gradient(135deg, #001529 0%, #003366 100%);
+        padding: 40px 20px;
+        border-radius: 0 0 30px 30px;
+        text-align: center;
+        margin-bottom: 20px;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.5);
     }
     
-    /* تنسيق كل زر داخل المستطيل */
-    .nav-item {
-        text-align: center;
-        color: #8b949e;
-        font-size: 10px;
+    /* كروت العملات الأفقية (التي كانت تظهر عمودية عندك) */
+    .ticker-wrapper {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 25px;
+        padding: 0 10px;
+    }
+    .ticker-card {
+        background: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 15px;
+        padding: 15px;
         flex: 1;
+        text-align: center;
+    }
+    .ticker-card .symbol { font-size: 12px; color: #8b949e; }
+    .ticker-card .price { font-size: 16px; font-weight: bold; color: #2ea043; }
+
+    /* شبكة الأزرار الدائرية (مثل التطبيقات الحقيقية) */
+    .action-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 15px;
+        padding: 20px;
+        text-align: center;
+    }
+    .action-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        color: #c9d1d9;
+        font-size: 13px;
         cursor: pointer;
     }
-    .nav-item i { font-size: 20px; display: block; margin-bottom: 2px; }
-    .nav-item.active { color: #2ea043; }
+    .action-icon {
+        width: 60px;
+        height: 60px;
+        background: #1c232d;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 8px;
+        font-size: 24px;
+        border: 1px solid #30363d;
+        color: #d29922; /* لون ذهبي أيقونات */
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
 
-    /* إخفاء القائمة الجانبية وأزرار Streamlit الافتراضية */
-    [data-testid="stSidebar"] { display: none; }
-    header {visibility: hidden;}
-    
-    /* تنسيق الكروت لتكون متجاوبة */
-    .stMetric { background-color: #161b22 !important; border: 1px solid #30363d !important; border-radius: 15px !important; }
+    /* بانر "قم بشراء العملات" الأخضر */
+    .promo-banner {
+        background: linear-gradient(90deg, #00b09b 0%, #96c93d 100%);
+        margin: 15px;
+        padding: 20px;
+        border-radius: 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: white;
+    }
+
+    /* القائمة السفلية الحقيقية ثابتة */
+    .nav-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background: #161b22;
+        border-top: 1px solid #30363d;
+        display: flex;
+        justify-content: space-around;
+        padding: 12px 0;
+        z-index: 1000;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. إدارة الجلسة والتنقل ---
-if 'auth' not in st.session_state: st.session_state.auth = None
-if 'page' not in st.session_state: st.session_state.page = "home"
+# --- 3. المحتوى (بناء الواجهة يدوياً بدلاً من أزرار Streamlit البايخة) ---
 
-def set_page(pg):
-    st.session_state.page = pg
+# [1] الهيدر
+st.markdown("""
+<div class="header-box">
+    <h1 style="color: #58a6ff; font-size: 28px; margin: 0;">XDCBIT Exchange</h1>
+    <p style="color: #8b949e; margin-top: 5px;">عمليات القانونية والشفافة من خلال تسجيل XDCBIT تظهر</p>
+</div>
+""", unsafe_allow_html=True)
 
-# --- 4. واجهة الدخول ---
-if st.session_state.auth is None:
-    st.markdown("<h2 style='text-align:center;'>💎 VUPEX LOGIN</h2>", unsafe_allow_html=True)
-    with st.container():
-        u = st.text_input("Username")
-        p = st.text_input("Password", type="password")
-        if st.button("Login"):
-            st.session_state.auth = {"u": u, "balance": 0.0}
-            st.rerun()
+# [2] بطاقات الأسعار (أفقية)
+st.markdown("""
+<div class="ticker-wrapper">
+    <div class="ticker-card">
+        <div class="symbol">BTC/USDT <span style="color:#2ea043">+0.05%</span></div>
+        <div class="price">66,871.84</div>
+    </div>
+    <div class="ticker-card">
+        <div class="symbol">ETH/USDT <span style="color:#2ea043">+0.02%</span></div>
+        <div class="price">2,052.64</div>
+    </div>
+    <div class="ticker-card">
+        <div class="symbol">TRX/USDT <span style="color:#f85149">-0.01%</span></div>
+        <div class="price">0.3146</div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
-# --- 5. المنصة (بعد الدخول) ---
-else:
-    # --- [A] الهيكل العلوي (Header) ---
+# [3] شبكة الأزرار الدائرية (Grid)
+# ملاحظة: عشان تخليها تضغط، استخدمنا أزرار مخفية فوق الـ HTML
+st.markdown("""
+<div class="action-grid">
+    <div class="action-item"><div class="action-icon">📥</div>إيداع</div>
+    <div class="action-item"><div class="action-icon">📤</div>سحب</div>
+    <div class="action-item"><div class="action-icon">🔄</div>صرف</div>
+    <div class="action-item"><div class="action-icon">💬</div>الدعم</div>
+</div>
+""", unsafe_allow_html=True)
+
+# [4] البانر الأخضر
+st.markdown("""
+<div class="promo-banner">
+    <div>
+        <h3 style="margin:0;">قم بشراء العملات بسرعة</h3>
+        <p style="margin:5px 0 0 0; font-size:14px;">آمن ومريح</p>
+    </div>
+    <div style="font-size:24px;">➜</div>
+</div>
+""", unsafe_allow_html=True)
+
+# [5] قائمة أعلى الأرباح (Gainers)
+st.markdown("<h4 style='padding:15px;'>🔥 أعلى الأرباح</h4>", unsafe_allow_html=True)
+gainers = [("ADA", "0.2473", "+3.04%"), ("YFI", "2484.7", "+2.90%"), ("FIL", "0.838", "+2.57%")]
+for name, price, change in gainers:
     st.markdown(f"""
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px;">
-            <div style="font-size: 20px; font-weight: bold; color: #58a6ff;">VUPEX</div>
-            <div style="background: #161b22; padding: 5px 15px; border-radius: 20px; font-size: 12px; border: 1px solid #30363d;">
-                ID: {str(uuid.uuid4())[:8].upper()} 👤
-            </div>
+    <div style="background:#161b22; margin:5px 15px; padding:15px; border-radius:12px; display:flex; justify-content:space-between; align-items:center; border:1px solid #30363d;">
+        <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:30px; height:30px; background:#1c232d; border-radius:50%; display:flex; align-items:center; justify-content:center;">🪙</div>
+            <b>{name}/USDT</b>
         </div>
+        <div style="text-align:right;">
+            <div>{price}</div>
+            <div style="color:#2ea043; font-weight:bold;">{change}</div>
+        </div>
+    </div>
     """, unsafe_allow_html=True)
-    st.divider()
 
-    # --- [B] محتوى الصفحات ---
-    if st.session_state.page == "home":
-        st.markdown("### الرئيسية")
-        st.metric("Total Balance", f"$ {st.session_state.auth['balance']:.2f}")
-        
-        # كروت الأسعار (متجاوبة)
-        c1, c2 = st.columns(2)
-        with c1: st.markdown("<div style='background:#161b22; padding:15px; border-radius:10px; border:1px solid #30363d;'>BTC/USDT<br><b style='color:#2ea043;'>$67,230.12</b></div>", unsafe_allow_html=True)
-        with c2: st.markdown("<div style='background:#161b22; padding:15px; border-radius:10px; border:1px solid #30363d;'>ETH/USDT<br><b style='color:#2ea043;'>$3,412.50</b></div>", unsafe_allow_html=True)
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-        # أزرار الوصول السريع (مربعات مثل الصورة)
-        b1, b2, b3, b4 = st.columns(4)
-        with b1: st.button("📥\nإيداع", on_click=set_page, args=("assets",))
-        with b2: st.button("📤\nسحب", on_click=set_page, args=("assets",))
-        with b3: st.button("🔄\nصرف", on_click=set_page, args=("home",))
-        with b4: st.button("💬\nدعم", on_click=set_page, args=("home",))
-
-    elif st.session_state.page == "trade":
-        st.header("الأسواق والصفقات")
-        st.components.v1.html('<iframe src="https://s.tradingview.com/widgetembed/?symbol=BINANCE:BTCUSDT&theme=dark" width="100%" height="400" frameborder="0"></iframe>', height=400)
-
-    elif st.session_state.page == "assets":
-        st.header("الأصول")
-        st.write("إيداع USDT (TRC20)")
-        st.code("T-Example-Wallet-Address-123456")
-
-    # --- [C] القائمة السفلية (المستطيل العائم) ---
-    # ملاحظة: استخدمنا أزرار Streamlit حقيقية داخل الـ Container لضمان بقاء الجلسة
-    st.markdown("<div style='height: 100px;'></div>", unsafe_allow_html=True) # فراغ عشان الأزرار ما تغطي المحتوى
-    
-    # نستخدم Columns داخل الـ Fixed Container
-    # بفضل الـ CSS فوق، هذه الأزرار رح تطلع مرتبة جوا المستطيل
-    footer = st.container()
-    with footer:
-        cols = st.columns(4)
-        with cols[0]: st.button("🏠", help="الرئيسية", on_click=set_page, args=("home",), key="nav_h")
-        with cols[1]: st.button("📊", help="الأسواق", on_click=set_page, args=("trade",), key="nav_m")
-        with cols[2]: st.button("🎯", help="الصفقات", on_click=set_page, args=("trade",), key="nav_t")
-        with cols[3]: st.button("💰", help="الأصول", on_click=set_page, args=("assets",), key="nav_a")
+# [6] الناف بار السفلي
+st.markdown("""
+<div class="nav-bar">
+    <div style="text-align:center; color:#2ea043;">🏠<br><span style="font-size:10px;">الرئيسية</span></div>
+    <div style="text-align:center; color:#8b949e;">📊<br><span style="font-size:10px;">الأسواق</span></div>
+    <div style="text-align:center; color:#8b949e;">🎯<br><span style="font-size:10px;">الصفقات</span></div>
+    <div style="text-align:center; color:#8b949e;">💰<br><span style="font-size:10px;">الأصول</span></div>
+</div>
+<div style="height:80px;"></div>
+""", unsafe_allow_html=True)
